@@ -58,6 +58,8 @@ func main() {
 		insert(ctx, client)
 	case "6":
 		update(ctx, client)
+	case "7":
+		findAndUpdate(ctx, client)
 	default:
 		log.Fatal("Invalid argument")
 	}
@@ -123,8 +125,7 @@ func inc(ctx context.Context, client *mongo.Client) {
 	if err != nil {
 		log.Fatal(err)
 	}
-	fmt.Printf("Matched %v documents and updated %v documents.\n",
-		updateResult.MatchedCount, updateResult.ModifiedCount)
+	fmt.Printf("incremented pop %v documents. after increment:\n", updateResult.ModifiedCount)
 
 	var result bson.M
 	err = coll.FindOne(ctx, bson.D{{"city", name}}).Decode(&result)
@@ -132,7 +133,6 @@ func inc(ctx context.Context, client *mongo.Client) {
 		log.Fatal(err)
 	}
 
-	fmt.Printf("%T %s\n", result["_id"], result["_id"])
 	printResult(result)
 }
 
@@ -190,6 +190,22 @@ func update(ctx context.Context, client *mongo.Client) {
 		log.Fatal(err)
 	}
 	fmt.Println("matched", result.MatchedCount, "modified", result.ModifiedCount)
+}
+
+func findAndUpdate(ctx context.Context, client *mongo.Client) {
+	coll := client.Database("sample_training").Collection("zips")
+
+	//opts := options.FindOneAndUpdate().SetUpsert(true)
+	filter := bson.D{{"_id", fromHex("628fe19b067c7f5640068623")}}
+	update := bson.D{{"$inc", bson.D{{"pop", 13}}}}
+
+	var prevDoc bson.M
+	err := coll.FindOneAndUpdate(ctx, filter, update /*opts*/).Decode(&prevDoc)
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Printf("incremented pop by 13, prev doc was:\n")
+	printResult(prevDoc)
 }
 
 func fromHex(s string) primitive.ObjectID {
