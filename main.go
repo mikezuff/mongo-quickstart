@@ -5,16 +5,20 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"math/rand"
 	"os"
 	"time"
 
 	"github.com/joho/godotenv"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 func main() {
+	rand.Seed(time.Now().UnixNano())
+
 	if err := godotenv.Load(); err != nil {
 		log.Println("No .env file found")
 	}
@@ -50,6 +54,10 @@ func main() {
 		inc(ctx, client)
 	case "4":
 		distinct(ctx, client)
+	case "5":
+		insert(ctx, client)
+	case "6":
+		update(ctx, client)
 	default:
 		log.Fatal("Invalid argument")
 	}
@@ -108,8 +116,9 @@ func printResult(result bson.M) {
 
 func inc(ctx context.Context, client *mongo.Client) {
 	coll := client.Database("sample_training").Collection("zips")
+	name := "LOST PUNKS"
 	updateResult, err := coll.UpdateOne(ctx,
-		bson.D{{"city", "LOST SPRINGS"}},
+		bson.D{{"city", name}},
 		bson.D{{"$inc", bson.D{{"pop", 1}}}})
 	if err != nil {
 		log.Fatal(err)
@@ -118,11 +127,12 @@ func inc(ctx context.Context, client *mongo.Client) {
 		updateResult.MatchedCount, updateResult.ModifiedCount)
 
 	var result bson.M
-	err = coll.FindOne(ctx, bson.D{{"city", "LOST SPRINGS"}}).Decode(&result)
+	err = coll.FindOne(ctx, bson.D{{"city", name}}).Decode(&result)
 	if err != nil {
 		log.Fatal(err)
 	}
 
+	fmt.Printf("%T %s\n", result["_id"], result["_id"])
 	printResult(result)
 }
 
@@ -136,4 +146,56 @@ func distinct(ctx context.Context, client *mongo.Client) {
 	for _, result := range results {
 		fmt.Println(result)
 	}
+}
+
+func insert(ctx context.Context, client *mongo.Client) {
+	type pxy struct {
+		X float32 `json:"x"`
+		Y float32 `json:"y"`
+	}
+
+	type City struct {
+		Name  string `bson:"city"`
+		Loc   pxy    `bson:"loc"`
+		Pop   int
+		State string
+		Zip   string
+	}
+
+	pop := rand.Intn(100)
+
+	fmt.Printf("inserting pop %d\n", pop)
+
+	coll := client.Database("sample_training").Collection("zips")
+	result, err := coll.InsertOne(ctx, City{
+		Name:  "LOST PUNKS",
+		Loc:   pxy{X: 1.0, Y: 2.0},
+		Pop:   pop,
+		State: "CA",
+		Zip:   "90210",
+	})
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	fmt.Println("Inserted ", result.InsertedID)
+}
+
+func update(ctx context.Context, client *mongo.Client) {
+	coll := client.Database("sample_training").Collection("zips")
+	filter := bson.D{{"$set", bson.D{{"pop", 100}}}}
+	result, err := coll.UpdateByID(ctx, fromHex("628fe19b067c7f5640068623"), filter)
+	//result, err := coll.UpdateOne(ctx, bson.D{{"_id", fromHex("628fe19b067c7f5640068623")}}, filter)
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Println("matched", result.MatchedCount, "modified", result.ModifiedCount)
+}
+
+func fromHex(s string) primitive.ObjectID {
+	i, err := primitive.ObjectIDFromHex(s)
+	if err != nil {
+		log.Fatal(err)
+	}
+	return i
 }
