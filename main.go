@@ -41,49 +41,72 @@ func main() {
 		}
 	}()
 
-	/*
-		coll := client.Database("sample_mflix").Collection("movies")
-		title := "Back to the Future"
+	switch os.Args[1] {
+	case "1":
+		findOne(ctx, client)
+	case "2":
+		find(ctx, client)
+	case "3":
+		inc(ctx, client)
+	case "4":
+		distinct(ctx, client)
+	default:
+		log.Fatal("Invalid argument")
+	}
+}
 
-		var result bson.M
-		err = coll.FindOne(ctx, bson.D{{"title", title}}).Decode(&result)
-		if err == mongo.ErrNoDocuments {
-			log.Printf("No document found with title %s", title)
-		}
-		if err != nil {
-			log.Fatal(err)
-		}
+func findOne(ctx context.Context, client *mongo.Client) {
+	coll := client.Database("sample_mflix").Collection("movies")
+	title := "Back to the Future"
 
-		jsonData, err := json.MarshalIndent(result, "", "    ")
-		if err != nil {
-			log.Fatal(err)
-		}
-		fmt.Printf("%s", jsonData)
-	*/
+	var result bson.M
+	err := coll.FindOne(ctx, bson.D{{"title", title}}).Decode(&result)
+	if err == mongo.ErrNoDocuments {
+		log.Printf("No document found with title %s", title)
+	}
+	if err != nil {
+		log.Fatal(err)
+	}
 
-	/*
-		coll := client.Database("sample_training").Collection("zips")
-		filter := bson.D{{"pop", bson.D{{"$lte", 50}}}}
+	jsonData, err := json.MarshalIndent(result, "", "    ")
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Printf("%s", jsonData)
+}
 
-		cursor, err := coll.Find(ctx, filter)
-		if err != nil {
-			log.Fatal(err)
-		}
+func find(ctx context.Context, client *mongo.Client) {
+	coll := client.Database("sample_training").Collection("zips")
+	filter := bson.D{{"pop", bson.D{{"$lte", 50}}}}
 
-		var results []bson.M
-		if err = cursor.All(ctx, &results); err != nil {
-			log.Fatal(err)
-		}
+	cursor, err := coll.Find(ctx, filter)
+	if err != nil {
+		log.Fatal(err)
+	}
 
-		for _, result := range results {
-			output, err := json.MarshalIndent(result, "", "      ")
-			if err != nil {
-				log.Fatal(err)
-			}
-			fmt.Printf("%s\n", output)
-		}
-	*/
+	printCursor(ctx, cursor)
+}
 
+func printCursor(ctx context.Context, cursor *mongo.Cursor) {
+	var results []bson.M
+	if err := cursor.All(ctx, &results); err != nil {
+		log.Fatal(err)
+	}
+
+	for _, result := range results {
+		printResult(result)
+	}
+}
+
+func printResult(result bson.M) {
+	output, err := json.MarshalIndent(result, "", "      ")
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Printf("%s\n", output)
+}
+
+func inc(ctx context.Context, client *mongo.Client) {
 	coll := client.Database("sample_training").Collection("zips")
 	updateResult, err := coll.UpdateOne(ctx,
 		bson.D{{"city", "LOST SPRINGS"}},
@@ -100,9 +123,17 @@ func main() {
 		log.Fatal(err)
 	}
 
-	jsonData, err := json.MarshalIndent(result, "", "    ")
+	printResult(result)
+}
+
+func distinct(ctx context.Context, client *mongo.Client) {
+	coll := client.Database("sample_mflix").Collection("movies")
+	filter := bson.D{{"directors", "Natalie Portman"}}
+	results, err := coll.Distinct(ctx, "title", filter)
 	if err != nil {
 		log.Fatal(err)
 	}
-	fmt.Printf("%s", jsonData)
+	for _, result := range results {
+		fmt.Println(result)
+	}
 }
