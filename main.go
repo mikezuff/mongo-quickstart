@@ -41,14 +41,61 @@ func main() {
 		}
 	}()
 
-	coll := client.Database("sample_mflix").Collection("movies")
-	title := "Back to the Future"
+	/*
+		coll := client.Database("sample_mflix").Collection("movies")
+		title := "Back to the Future"
+
+		var result bson.M
+		err = coll.FindOne(ctx, bson.D{{"title", title}}).Decode(&result)
+		if err == mongo.ErrNoDocuments {
+			log.Printf("No document found with title %s", title)
+		}
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		jsonData, err := json.MarshalIndent(result, "", "    ")
+		if err != nil {
+			log.Fatal(err)
+		}
+		fmt.Printf("%s", jsonData)
+	*/
+
+	/*
+		coll := client.Database("sample_training").Collection("zips")
+		filter := bson.D{{"pop", bson.D{{"$lte", 50}}}}
+
+		cursor, err := coll.Find(ctx, filter)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		var results []bson.M
+		if err = cursor.All(ctx, &results); err != nil {
+			log.Fatal(err)
+		}
+
+		for _, result := range results {
+			output, err := json.MarshalIndent(result, "", "      ")
+			if err != nil {
+				log.Fatal(err)
+			}
+			fmt.Printf("%s\n", output)
+		}
+	*/
+
+	coll := client.Database("sample_training").Collection("zips")
+	updateResult, err := coll.UpdateOne(ctx,
+		bson.D{{"city", "LOST SPRINGS"}},
+		bson.D{{"$inc", bson.D{{"pop", 1}}}})
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Printf("Matched %v documents and updated %v documents.\n",
+		updateResult.MatchedCount, updateResult.ModifiedCount)
 
 	var result bson.M
-	err = coll.FindOne(ctx, bson.D{{"title", title}}).Decode(&result)
-	if err == mongo.ErrNoDocuments {
-		log.Printf("No document found with title %s", title)
-	}
+	err = coll.FindOne(ctx, bson.D{{"city", "LOST SPRINGS"}}).Decode(&result)
 	if err != nil {
 		log.Fatal(err)
 	}
